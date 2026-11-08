@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>R4 Mecanum · Telemetry</title>
+  <style>
+    :root {
+      --bg: #070b14;
+      --panel: #0d1527;
+      --border: #1e2c4a;
+      --text: #e1ebfa;
+      --muted: #6f8cb5;
+      --accent: #00e5ff;
+      --pos: #00e676;
+      --neg: #ff5252;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at 50% 0%, #0d1830 0%, #040710 100%);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: 18px;
+    }
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    h1 { font-size: 1.05rem; margin: 0 auto 0 0; letter-spacing: 0.4px; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: #0f1a30;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .badge.ok { color: var(--pos); border-color: rgba(0, 230, 118, 0.4); }
+    .badge.bad { color: var(--neg); border-color: rgba(255, 82, 82, 0.4); }
+    button {
+      background: linear-gradient(135deg, #00b4d8 0%, #0077b6 100%);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 7px 14px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button:disabled { opacity: 0.45; cursor: default; }
+    main {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 14px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px;
+    }
+    .card h2 {
+      margin: 0 0 10px;
+      font-size: 0.74rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 92px 1fr 74px;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+      font-size: 0.78rem;
+    }
+    .row .label { color: var(--muted); }
+    .row .value {
+      text-align: right;
+      font-family: ui-monospace, monospace;
+      font-variant-numeric: tabular-nums;
+    }
+    .track {
+      position: relative;
+      height: 14px;
+      border-radius: 7px;
+      background: #0a1120;
+      border: 1px solid #16243e;
+      overflow: hidden;
+    }
+    .track::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      background: #24405f;
+    }
+    .fill {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 50%;
+      width: 0;
+      background: var(--accent);
+      transition: left 0.05s linear, width 0.05s linear, background 0.05s linear;
+    }
+    .hint {
+      margin-top: 16px;
+      font-size: 0.74rem;
+      line-height: 1.5;
+      color: var(--muted);
+      max-width: 760px;
+    }
+    code { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>R4 Mecanum · Telemetry (อ่านค่าจริงจากบอร์ด)</h1>
+    <span id="port" class="badge">USB: ยังไม่เชื่อมต่อ</span>
+    <span id="link" class="badge">LINK: —</span>
+    <span id="armed" class="badge">DISARMED</span>
+    <button id="connect" type="button">เชื่อมต่อ USB</button>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>RC input · FlySky iBUS (CH1 / CH2 / CH4)</h2>
+      <div class="row"><span class="label">CH1 strafe</span>
+        <div class="track"><div class="fill" id="bar-s"></div></div><span class="value" id="v-s">—</span></div>
+      <div class="row"><span class="label">CH2 forward</span>
+        <div class="track"><div class="fill" id="bar-f"></div></div><span class="value" id="v-f">—</span></div>
+      <div class="row"><span class="label">CH4 turn</span>
+        <div class="track"><div class="fill" id="bar-t"></div></div><span class="value" id="v-t">—</span></div>
+      <div class="row"><span class="label">pulse µs</span><span></span>
+        <span class="value" id="v-pulse">—</span></div>
+    </section>
+
+    <section class="card">
+      <h2>Wheel output · ค่าที่สั่งมอเตอร์จริง (%)</h2>
+      <div class="row"><span class="label">FL หน้าซ้าย</span>
+        <div class="track"><div class="fill" id="bar-fl"></div></div><span class="value" id="v-fl">—</span></div>
+      <div class="row"><span class="label">FR หน้าขวา</span>
+        <div class="track"><div class="fill" id="bar-fr"></div></div><span class="value" id="v-fr">—</span></div>
+      <div class="row"><span class="label">RL หลังซ้าย</span>
+        <div class="track"><div class="fill" id="bar-rl"></div></div><span class="value" id="v-rl">—</span></div>
+      <div class="row"><span class="label">RR หลังขวา</span>
+        <div class="track"><div class="fill" id="bar-rr"></div></div><span class="value" id="v-rr">—</span></div>
+      <div class="row"><span class="label">board ms</span><span></span>
+        <span class="value" id="v-ms">—</span></div>
+    </section>
+  </main>
+
+  <p class="hint">
+    หน้านี้เป็นตัวอ่านค่าอย่างเดียว (read-only) — ไม่ได้สั่งมอเตอร์ รับข้อมูลที่บอร์ดส่งมาทาง USB
+    (iBUS เข้าบอร์ดทาง D0 เส้นเดียว) ต้องเปิดด้วย Chrome หรือ Edge
+    แล้วกด “เชื่อมต่อ USB” เลือกพอร์ตของบอร์ด (115200 baud) ถ้าเปิดแบบไฟล์ไม่ทำงาน ให้รัน
+    <code>python3 -m http.server</code> ที่โฟลเดอร์โปรเจกต์แล้วเปิด
+    <code>http://localhost:8000/tools/telemetry.html</code>
+  </p>
+
+  <script>
+  (() => {
+    const state = { port: null, reader: null, lastDataAt: 0 };
+    const byId = (id) => document.getElementById(id);
+
+    function setBadge(node, text, cls) {
+      node.textContent = text;
+      node.className = "badge" + (cls ? " " + cls : "");
+    }
+
+    function renderBar(fill, value) {
+      const magnitude = Math.min(100, Math.abs(value)) / 2;  // half-track percent
+      fill.style.width = magnitude + "%";
+      fill.style.left = value >= 0 ? "50%" : 50 - magnitude + "%";
+      fill.style.background = value > 0 ? "var(--pos)" : value < 0 ? "var(--neg)" : "#24405f";
+    }
+
+    function renderRow(key, value) {
+      renderBar(byId("bar-" + key), value);
+      byId("v-" + key).textContent = value;
+    }
+
+    function applyLine(line) {
+      const fields = line.split(",");
+      if (fields[0] !== "T" || fields.length < 14) return;
+      const number = (index) => Number(fields[index]) || 0;
+
+      state.lastDataAt = performance.now();
+      setBadge(byId("link"), number(12) === 1 ? "LINK: OK" : "LINK: LOST", number(12) === 1 ? "ok" : "bad");
+      setBadge(byId("armed"), number(13) === 1 ? "ARMED" : "DISARMED", number(13) === 1 ? "ok" : "");
+
+      renderRow("s", number(5));
+      renderRow("f", number(6));
+      renderRow("t", number(7));
+      byId("v-pulse").textContent = `${number(2)} / ${number(3)} / ${number(4)}`;
+
+      renderRow("fl", number(8));
+      renderRow("fr", number(9));
+      renderRow("rl", number(10));
+      renderRow("rr", number(11));
+      byId("v-ms").textContent = number(1);
+    }
+
+    async function connect() {
+      if (!("serial" in navigator)) {
+        setBadge(byId("port"), "USB: Web Serial ไม่รองรับ", "bad");
+        return;
+      }
+      try {
+        state.port = await navigator.serial.requestPort();
+        await state.port.open({ baudRate: 115200 });
+      } catch (_) {
+        setBadge(byId("port"), "USB: เปิดพอร์ตไม่สำเร็จ", "bad");
+        return;
+      }
+
+      setBadge(byId("port"), "USB: connected", "ok");
+      byId("connect").disabled = true;
+
+      const decoder = new TextDecoderStream();
+      state.port.readable.pipeTo(decoder.writable).catch(() => {});
+      state.reader = decoder.readable.getReader();
+      let buffer = "";
+
+      try {
+        while (true) {
+          const { value, done } = await state.reader.read();
+          if (done) break;
+          buffer += value;
+          if (buffer.length > 16384) buffer = buffer.slice(-4096);
+          const lines = buffer.split(/\r?\n/);
+          buffer = lines.pop();
+          for (const line of lines) applyLine(line);
+        }
+      } catch (_) {
+        setBadge(byId("port"), "USB: อ่านข้อมูลไม่สำเร็จ", "bad");
+      }
+    }
+
+    byId("connect").addEventListener("click", connect);
+
+    // Grey out everything when the board stops streaming (unplugged / not running).
+    setInterval(() => {
+      if (state.lastDataAt === 0) return;
+      if (performance.now() - state.lastDataAt < 600) return;
+      setBadge(byId("link"), "LINK: NO DATA", "bad");
+      setBadge(byId("armed"), "DISARMED", "");
+      for (const key of ["s", "f", "t", "fl", "fr", "rl", "rr"]) renderRow(key, 0);
+    }, 300);
+  })();
+  </script>
+</body>
+</html>
