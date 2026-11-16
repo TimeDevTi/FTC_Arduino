@@ -1,0 +1,478 @@
+<!doctype html>
+<!--
+  Mecanum Control (USB) — เปิดไฟล์นี้ด้วย Google Chrome หรือ Microsoft Edge บนคอมพิวเตอร์
+  กด "เชื่อมต่อ" แล้วเลือกพอร์ตของ Arduino  (ต้องอัปโหลด Arduino_Mecanum_USB ลง Arduino ก่อน)
+  ไม่ต้องใช้อินเทอร์เน็ต  ·  เปิดแบบ ?demo ต่อท้ายชื่อไฟล์ เพื่อลองเล่นโดยไม่ต่อหุ่น
+-->
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0e1116">
+<link rel="icon" href="data:,">
+<title>Mecanum Control (USB)</title>
+<style>
+:root{--bg:#0e1116;--panel:#161a21;--panel2:#1d222c;--line:#2a313c;--text:#e7eaf0;--muted:#8b94a3;--accent:#3d9bff;--pos:#34c27f;--neg:#ff8a3d;--bad:#ef4444;--joy:min(36vw,56vh,260px)}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--text);font:15px/1.45 "Noto Sans Thai","Leelawadee UI","Sukhumvit Set",system-ui,-apple-system,"Segoe UI",sans-serif;overscroll-behavior:none}
+body{display:flex;flex-direction:column;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+button,select,input{font:inherit;color:inherit}
+button{background:none;border:0;cursor:pointer}
+header{display:flex;align-items:center;gap:14px;padding:8px 14px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.brand{font-weight:700}
+.stat{display:flex;gap:12px;font-size:13px;color:var(--muted)}
+.stat span{display:flex;align-items:center;gap:6px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--bad)}
+.dot.ok{background:var(--pos)}
+.conn{padding:5px 14px;border-radius:8px;border:1px solid var(--accent);color:var(--accent);font-size:14px;font-weight:600}
+.conn.on{border-color:var(--line);color:var(--muted);font-weight:400}
+.mode{font-size:12px;color:var(--neg)}
+nav{margin-left:auto;display:flex;gap:2px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:3px}
+nav button{padding:5px 14px;border-radius:7px;color:var(--muted)}
+nav button.on{background:var(--panel2);color:var(--text)}
+.linkbar{display:none;padding:8px 14px;font-size:13px;line-height:1.5;background:#3a1d14;color:#ffd2bd;border-bottom:1px solid #5c2c1d}
+.linkbar.info{background:#13243a;color:#cfe3ff;border-color:#1f3a5c}
+.linkbar.show{display:block}
+.linkbar b{color:#fff}
+main{flex:1;min-height:0;display:none}
+main.on{display:grid}
+#drive{grid-template-columns:1fr auto 1fr;align-items:center;justify-items:center;gap:10px;padding:12px}
+.pad{display:flex;flex-direction:column;align-items:center;gap:8px}
+.cap{font-size:13px;color:var(--muted)}
+.joy{position:relative;width:var(--joy);height:var(--joy);border-radius:50%;background:var(--panel);border:1px solid var(--line);touch-action:none;cursor:grab}
+.joy::before,.joy::after{content:"";position:absolute;background:var(--line)}
+.joy::before{left:50%;top:12%;bottom:12%;width:1px}
+.joy::after{top:50%;left:12%;right:12%;height:1px}
+.joy.h{height:calc(var(--joy)*.4);border-radius:999px}
+.joy.h::before{top:22%;bottom:22%}
+.knob{position:absolute;left:50%;top:50%;width:40%;aspect-ratio:1;border-radius:50%;background:var(--panel2);border:2px solid var(--muted);transform:translate(-50%,-50%);pointer-events:none}
+.joy.h .knob{width:auto;height:78%}
+.joy.active{cursor:grabbing}
+.joy.active .knob{border-color:var(--accent);background:#1b3352}
+.mid{display:flex;flex-direction:column;align-items:center;gap:12px;min-width:170px}
+.robot{position:relative;width:128px;height:156px}
+.chassis{position:absolute;inset:14px 24px;border:2px solid var(--line);border-radius:12px;background:var(--panel)}
+.chassis::before{content:"▲ หน้า";position:absolute;top:4px;left:0;right:0;text-align:center;font-size:11px;color:var(--muted)}
+.wh{position:absolute;width:24px;height:54px;border-radius:6px;overflow:hidden;border:1px solid var(--line);background:repeating-linear-gradient(var(--a),#323a46 0 3px,#1f252e 3px 7px)}
+.wh.fl{left:0;top:0;--a:45deg}.wh.fr{right:0;top:0;--a:-45deg}.wh.rl{left:0;bottom:0;--a:-45deg}.wh.rr{right:0;bottom:0;--a:45deg}
+.wh i{position:absolute;left:0;right:0;height:0;bottom:50%;background:var(--pos);opacity:.9}
+.wh i.neg{bottom:auto;top:50%;background:var(--neg)}
+.val{position:absolute;width:38px;font-size:11px;font-style:normal;color:var(--muted);font-variant-numeric:tabular-nums}
+.val.fl{left:28px;top:40px}.val.fr{right:28px;top:40px;text-align:right}.val.rl{left:28px;bottom:40px}.val.rr{right:28px;bottom:40px;text-align:right}
+.speed{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+.speed b,.row b{color:var(--text);min-width:38px;text-align:right;font-variant-numeric:tabular-nums}
+input[type=range]{width:140px;accent-color:var(--accent)}
+.stop{width:100%;max-width:200px;padding:11px;border-radius:12px;background:var(--bad);color:#fff;font-weight:700;letter-spacing:.05em}
+.stop:active{filter:brightness(.85)}
+.hint{font-size:12px;color:var(--muted);text-align:center}
+.hint kbd{font:inherit;padding:0 5px;border:1px solid var(--line);border-radius:4px;background:var(--panel)}
+@media (orientation:portrait){
+  :root{--joy:min(44vw,260px)}
+  #drive{grid-template-columns:1fr 1fr;grid-template-rows:1fr auto;grid-template-areas:"mid mid" "a b"}
+  .mid{grid-area:mid}#padMove{grid-area:a}#padRot{grid-area:b}
+}
+@media (hover:none){.hint{display:none}}
+@media (max-width:480px){.brand{display:none}header{gap:10px;padding:8px 10px}}
+#setup.on{display:block;overflow-y:auto}
+.setup{max-width:640px;margin:0 auto;padding:14px;display:flex;flex-direction:column;gap:12px}
+.help{font-size:13px;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.help b{color:var(--text);font-weight:600}
+.front{text-align:center;font-size:12px;color:var(--muted);margin-bottom:-4px}
+#cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.ch{display:flex;align-items:baseline;gap:6px}
+.ch small{color:var(--muted);font-size:11px}
+.live{margin-left:auto;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.fld{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted)}
+select{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 8px;color:var(--text);font-size:14px}
+.chk{display:flex;align-items:center;gap:8px;font-size:14px}
+.chk input{width:18px;height:18px;accent-color:var(--accent)}
+.gain{display:flex;flex-direction:column;gap:2px;font-size:12px;color:var(--muted)}
+.gain span{display:flex;justify-content:space-between}
+.gain b{color:var(--text);font-variant-numeric:tabular-nums}
+.gain input{width:100%}
+.rccard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.rchead{display:flex;align-items:center;gap:8px;font-size:14px;flex-wrap:wrap}
+.rchead small{margin-left:auto;color:var(--muted);font-size:12px}
+.rcmsg{font-size:12px;color:var(--muted)}
+.rcmsg.bad{color:var(--neg)}
+.rcrow{display:grid;grid-template-columns:96px 1fr 42px;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.rcbar{position:relative;height:8px;background:var(--bg);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.rcbar::after{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--muted);opacity:.5}
+.rcbar i{position:absolute;top:0;bottom:0;background:var(--accent)}
+.rcrow b{color:var(--text);text-align:right;font-weight:500;font-variant-numeric:tabular-nums}
+.allrow{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;font-size:14px}
+.allrow .hold{flex:1}
+.hold{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.hold button{padding:10px 4px;border-radius:9px;background:var(--panel2);border:1px solid var(--line);touch-action:none;font-size:14px}
+.hold button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.warn{color:var(--neg)}
+.primary{margin-left:auto;padding:10px 18px;border-radius:10px;background:var(--accent);color:#fff;font-weight:600}
+#toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);opacity:0;background:var(--panel2);border:1px solid var(--line);padding:8px 16px;border-radius:999px;font-size:14px;transition:.2s;pointer-events:none;max-width:90vw;text-align:center}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">Mecanum</div>
+  <div class="stat"><span><i class="dot" id="dUsb"></i>USB</span><span><i class="dot" id="dArd"></i>Arduino</span><span><i class="dot" id="dRc"></i>รีโมท</span></div>
+  <button id="conn" class="conn">เชื่อมต่อ</button>
+  <span class="mode" id="mode"></span>
+  <nav><button data-tab="drive" class="on">ขับ</button><button data-tab="setup">ตั้งค่าล้อ</button></nav>
+</header>
+<div id="linkbar" class="linkbar"></div>
+
+<main id="drive" class="on">
+  <section class="pad" id="padMove">
+    <div class="joy" id="jMove"><div class="knob"></div></div>
+    <div class="cap">เดิน / สไลด์</div>
+  </section>
+  <section class="mid">
+    <div class="robot">
+      <div class="chassis"></div>
+      <div class="wh fl"><i></i></div><div class="wh fr"><i></i></div>
+      <div class="wh rl"><i></i></div><div class="wh rr"><i></i></div>
+      <em class="val fl">0</em><em class="val fr">0</em><em class="val rl">0</em><em class="val rr">0</em>
+    </div>
+    <label class="speed">ความเร็ว<input id="spd" type="range" min="10" max="100" step="5" value="60"><b id="spdV">60%</b></label>
+    <button id="stop" class="stop">หยุด</button>
+    <p class="hint"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> เดิน/สไลด์ · <kbd>Q</kbd><kbd>E</kbd> หมุน · <kbd>Space</kbd> หยุด</p>
+  </section>
+  <section class="pad" id="padRot">
+    <div class="joy h" id="jRot"><div class="knob"></div></div>
+    <div class="cap">หมุนตัว</div>
+  </section>
+</main>
+
+<main id="setup">
+  <div class="setup">
+    <p class="help">ยกหุ่นให้ล้อลอยก่อน แล้ว<b>กดค้าง ▲</b> ทีละล้อ<br>
+      • ถ้าล้อที่หมุน<b>ไม่ใช่ล้อนั้น</b> → เปลี่ยน "ช่องมอเตอร์"<br>
+      • ถ้าล้อหมุน<b>ถอยหลัง</b> → ติ๊ก "กลับทิศ"<br>
+      • ถ้าล้อหมุน<b>เร็วไม่เท่ากัน</b> → กดค้าง ▲ ทุกล้อ แล้วลด "ความแรง" ของล้อที่เร็วกว่าจนเท่ากัน<br>
+      เสร็จแล้วกด <b>บันทึก</b> (ค่าจะเก็บใน Arduino แม้ถอดสาย)</p>
+    <div class="rccard">
+      <div class="rchead"><i class="dot" id="dRc2"></i><b>รีโมท FlySky</b><small id="rcSrc"></small></div>
+      <div class="rcmsg" id="rcMsg">ยังไม่ได้รับข้อมูลจาก Arduino</div>
+      <div id="rcRows"></div>
+    </div>
+    <div class="front">▲ ด้านหน้าหุ่น</div>
+    <div id="cards"></div>
+    <div class="allrow">ทดสอบทุกล้อพร้อมกัน<div class="hold" id="holdAll"><button data-d="1">▲ หน้า</button><button data-d="-1">▼ หลัง</button></div></div>
+    <label class="row">แรงทดสอบ<input id="tp" type="range" min="20" max="100" step="5" value="50"><b id="tpV">50%</b></label>
+    <div class="row"><span id="dup" class="warn"></span><span id="dirty"></span><button id="save" class="primary">บันทึก</button></div>
+  </div>
+</main>
+<div id="toast"></div>
+
+<script>
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const BAUD=115200;                                   // ต้องตรงกับ BAUD ในโค้ด Arduino
+const WHEELS=[['ซ้ายหน้า','FL'],['ขวาหน้า','FR'],['ซ้ายหลัง','RL'],['ขวาหลัง','RR']];
+let CH=['M1','M2','M3','M4'];                         // ชื่อช่องมอเตอร์ — Arduino ส่งขาจริงมาให้ (mp)
+function setChLabels(mp){
+  CH=[0,1,2,3].map(i=>{const a=mp[i*3],b=mp[i*3+1],t=mp[i*3+2];return `M${i+1} · ${t===0?'Cytron ':''}ขา ${a}, ${b}`});
+  if(typeof cards!=='undefined')cards.forEach(c=>c.querySelectorAll('option').forEach((o,j)=>o.textContent=CH[j]));
+}
+const DEMO=/[?&]demo/.test(location.search);
+const HAS_SERIAL='serial' in navigator;
+let tab='drive',dirty=false,test={w:-1,d:0},lastRx=0,openedAt=0;
+let cfg={m:[0,1,2,3],v:[0,0,0,0],g:[100,100,100,100]};
+const keys=new Set();
+
+// ---------- จอยสติ๊ก ----------
+class Joy{
+  constructor(el,horiz){
+    this.el=el;this.k=el.querySelector('.knob');this.h=horiz;this.x=0;this.y=0;this.id=null;
+    el.addEventListener('pointerdown',e=>this.down(e));
+    el.addEventListener('pointermove',e=>{if(e.pointerId===this.id)this.move(e)});
+    for(const t of['pointerup','pointercancel','lostpointercapture'])
+      el.addEventListener(t,e=>{if(e.pointerId===this.id)this.up()});
+  }
+  down(e){
+    if(this.id!==null)return;
+    e.preventDefault();this.id=e.pointerId;this.el.setPointerCapture(e.pointerId);
+    const r=this.el.getBoundingClientRect();
+    this.cx=r.left+r.width/2;this.cy=r.top+r.height/2;this.R=(r.width-this.k.offsetWidth)/2;
+    this.el.classList.add('active');this.move(e);
+  }
+  move(e){
+    let dx=e.clientX-this.cx,dy=this.h?0:e.clientY-this.cy;
+    const d=Math.hypot(dx,dy);
+    if(d>this.R){dx*=this.R/d;dy*=this.R/d}
+    this.x=dx/this.R;this.y=-dy/this.R;this.draw(dx,dy);
+  }
+  up(){this.id=null;this.x=this.y=0;this.el.classList.remove('active');this.draw(0,0)}
+  draw(dx,dy){this.k.style.transform=`translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px))`}
+}
+const jm=new Joy($('#jMove'),false),jr=new Joy($('#jRot'),true);
+
+// deadzone + โค้งนุ่มช่วงเบา (คุมช้าๆ ได้ละเอียดขึ้น)
+const curve=a=>{if(a<.08)return 0;const n=(a-.08)/.92;return .4*n+.6*n*n};
+const shape1=v=>Math.sign(v)*curve(Math.abs(v));
+function shape2(x,y){const m=Math.hypot(x,y);if(!m)return[0,0];const s=curve(m)/m;return[x*s,y*s]}
+const kd=c=>keys.has(c)?1:0;
+
+// ---------- สาย USB (Web Serial) ----------
+let port=null,writer=null,reader=null,keepReading=false,loopDone=null,pending=0,demoOn=false;
+const enc=new TextEncoder();
+const isOpen=()=>DEMO?demoOn:!!writer;
+
+function send(m){
+  if(DEMO){if(demoOn)demoHandle(m);return}
+  if(!writer||pending>3)return;                       // สายช้า -> ทิ้งคำสั่งเก่า ไม่ให้ค้างคิว
+  pending++;
+  writer.write(enc.encode(m+'\n')).catch(()=>{}).finally(()=>pending--);
+}
+
+async function openPort(p){
+  try{await p.open({baudRate:BAUD})}
+  catch(e){
+    toast(/open/i.test(e.message)?'พอร์ตถูกใช้อยู่ — ปิด Serial Monitor ใน Arduino IDE ก่อน':'เปิดพอร์ตไม่ได้: '+e.message);
+    return;
+  }
+  port=p;writer=p.writable.getWriter();keepReading=true;openedAt=Date.now();lastRx=0;cfgSeen=false;lastG=0;
+  loopDone=readLoop(p);
+  updateUi();
+}
+
+async function readLoop(p){
+  const dec=new TextDecoder();let buf='';
+  while(keepReading&&p.readable){
+    reader=p.readable.getReader();
+    try{
+      for(;;){
+        const{value,done}=await reader.read();
+        if(done)break;
+        buf+=dec.decode(value,{stream:true});
+        let i;
+        while((i=buf.indexOf('\n'))>=0){const ln=buf.slice(0,i).trim();buf=buf.slice(i+1);if(ln)onLine(ln)}
+        if(buf.length>2000)buf='';
+      }
+    }catch(e){}                                        // สายหลุด หรือข้อมูลเพี้ยน
+    finally{reader.releaseLock();reader=null}
+  }
+  if(writer){try{writer.releaseLock()}catch(e){}writer=null}
+  try{await p.close()}catch(e){}
+  const lost=keepReading;keepReading=false;port=null;
+  updateUi();
+  if(lost)toast('การเชื่อมต่อหลุด — สาย USB หลุดหรือเปล่า?');
+}
+
+async function disconnect(){
+  if(!port)return;
+  send('S');
+  await new Promise(r=>setTimeout(r,60));
+  keepReading=false;
+  if(reader){try{await reader.cancel()}catch(e){}}
+  await loopDone;
+}
+
+$('#conn').onclick=async()=>{
+  if(DEMO){demoOn=!demoOn;if(demoOn)demoHandle('G');updateUi();return}
+  if(!HAS_SERIAL)return;
+  if(port){await disconnect();return}
+  try{openPort(await navigator.serial.requestPort())}
+  catch(e){if(e.name!=='NotFoundError')toast('เลือกพอร์ตไม่ได้: '+e.message)}
+};
+if(HAS_SERIAL&&!DEMO){
+  // เคยอนุญาตพอร์ตไว้แล้ว -> ต่อให้อัตโนมัติ
+  navigator.serial.getPorts().then(ps=>{if(ps.length===1&&!port)openPort(ps[0])});
+  navigator.serial.addEventListener('disconnect',e=>{if(e.target===port&&reader)reader.cancel().catch(()=>{})});
+}
+
+// เปิดพอร์ตแล้ว Arduino จะรีเซ็ต (~1 วินาที) — ห้ามส่งอะไรจนกว่าจะได้ยิน Arduino ก่อน
+// ไม่อย่างนั้น bootloader อาจค้างรับข้อมูลอยู่
+let cfgSeen=false,lastG=0;
+function onLine(t){
+  let m;try{m=JSON.parse(t)}catch(e){return}             // ข้ามบรรทัดที่ไม่ใช่ JSON
+  const now=Date.now();lastRx=now;
+  if(!cfgSeen&&now-lastG>1000){lastG=now;send('G')}       // ขอค่าตั้งล้อ จนกว่าจะได้
+  if(m.w)showWheels(m.w);
+  if('s' in m)src=m.s;
+  if(m.rcm)rcm=m.rcm;
+  if(m.mp&&m.mp.length===12)setChLabels(m.mp);
+  if(m.rc)showRc(m.rc,m.ch||[]);
+  if(m.cfg){cfgSeen=true;cfg=m.cfg;if(m.saved){dirty=false;toast('บันทึกลง Arduino แล้ว ✓')}renderCfg()}
+}
+
+// ---------- รีโมท FlySky ----------
+let src=0,rcm=[1,2,4,3,0,1,0],rcPrev=null,rcState=0;   // rcm = ช่องของ สไลด์,เดินหน้า,หมุน,ความเร็ว,เปิดขับ, มีรีโมทไหม, ขาที่ต่อรีซีฟ
+const SRC_NAME=['ไม่มีใครสั่ง (หยุด)','รีโมท','หน้าเว็บ','ปุ่มทดสอบล้อ'];
+const rcRows=[...Array(8)].map((_,i)=>{
+  const r=document.createElement('div');r.className='rcrow';
+  r.innerHTML=`<span></span><div class="rcbar"><i></i></div><b>-</b>`;
+  $('#rcRows').appendChild(r);return r;
+});
+function rcRole(ch){
+  const names=['สไลด์','เดินหน้า','หมุน','ความเร็ว','เปิดขับ'];
+  const k=rcm.slice(0,5).indexOf(ch);return k<0?'':' · '+names[k];
+}
+// rc = [สัญญาณ, เปิดให้ขับ, เฟรมดี, เฟรมเสีย, ไบต์ที่เข้าพอร์ตรีโมท, พอร์ตที่เฟรมล่าสุดมา (1 = พอร์ตรีโมท, 0 = ขา 0)]
+function showRc(rc,ch){
+  const [ok,armed,frames,errs,bytes,port=1]=rc,pin=rcm[6]??0;
+  const p=rcPrev;rcPrev={frames,errs,bytes,t:Date.now()};
+  const newBytes=p?bytes!==p.bytes:false,newFrames=p?frames!==p.frames:false,newErrs=p?errs!==p.errs:false;
+  const onPin0=ok&&port===0&&pin!==0;                     // Mega: รีซีฟต่อขา 0 ที่ใช้ร่วมกับ USB
+  let msg,bad=true;
+  if(rcm[5]===0)msg='บอร์ดนี้ใช้รีโมทไม่ได้';
+  else if(onPin0)msg=`รับรีโมทได้ แต่รีซีฟต่ออยู่ขา 0 (ใช้ร่วมกับ USB) — ย้ายสายสัญญาณไปขา ${pin} (RX1) ไม่อย่างนั้นอัปโหลด/สั่งจากเว็บไม่ได้ และตอนเปิดเครื่องอาจค้าง`;
+  else if(ok&&armed){msg='สัญญาณดี — ขับด้วยรีโมทได้';bad=false}
+  else if(ok){msg=`สัญญาณดี แต่สวิตช์ "เปิดขับ" (CH${rcm[4]}) ยังปิดอยู่`}
+  else if(!p)msg='กำลังรอข้อมูล...';
+  else if(!newBytes)msg=`ไม่มีข้อมูลจากรีซีฟเข้าขา ${pin} — เปิดรีโมทหรือยัง? รีซีฟมีไฟไหม? สายสัญญาณต่อที่ขา ${pin} หรือเปล่า?`;
+  else if(newErrs&&!newFrames)msg=`ข้อมูลเข้าขา ${pin} แต่เพี้ยน — สายยาว/หลวม หรือแรงดันสัญญาณต่ำไป`;
+  else msg=`มีข้อมูลเข้าขา ${pin} แต่ไม่ใช่ iBUS — ต้องต่อจากพอร์ต iBUS (SERVO) ของรีซีฟ ไม่ใช่ช่อง PWM/PPM`;
+  rcState=ok&&armed?1:0;
+  setDot('#dRc',!!rcState);setDot('#dRc2',!!rcState);
+  const el=$('#rcMsg');el.textContent=msg;el.classList.toggle('bad',bad);
+  $('#rcSrc').textContent='ตอนนี้คุมโดย: '+(SRC_NAME[src]||'-');
+  rcRows.forEach((r,i)=>{
+    const v=ch[i]||0;r.children[0].textContent='CH'+(i+1)+rcRole(i+1);
+    const pct=Math.max(0,Math.min(100,(v-1000)/10)),bar=r.querySelector('i');
+    bar.style.left=Math.min(50,pct)+'%';bar.style.width=Math.abs(pct-50)+'%';
+    r.children[2].textContent=v||'-';
+  });
+}
+
+// ---------- ส่งคำสั่งทุก 50 ms ----------
+function tick(){
+  if(!isOpen()||document.hidden||!lastRx)return;
+  if(tab==='drive'){
+    const s=+$('#spd').value;
+    const kx=Math.max(kd('KeyD'),kd('ArrowRight'))-Math.max(kd('KeyA'),kd('ArrowLeft'));
+    const ky=Math.max(kd('KeyW'),kd('ArrowUp'))-Math.max(kd('KeyS'),kd('ArrowDown'));
+    const kr=kd('KeyE')-kd('KeyQ');
+    let[x,y]=shape2(jm.x,jm.y),r=shape1(jr.x);
+    if(kx||ky){x=kx;y=ky}
+    if(kr)r=kr;
+    send(`D ${Math.round(x*s)} ${Math.round(y*s)} ${Math.round(r*s)}`);
+  }else{
+    send(test.w<0?'T -1 0':`T ${test.w} ${Math.round(test.d*+$('#tp').value*2.55)}`);
+  }
+}
+setInterval(tick,50);
+
+// ---------- สถานะ ----------
+function setDot(id,ok){$(id).classList.toggle('ok',ok)}
+function bar(html,info){const b=$('#linkbar');b.innerHTML=html||'';b.classList.toggle('show',!!html);b.classList.toggle('info',!!info)}
+function updateUi(){
+  const open=isOpen(),alive=open&&lastRx&&Date.now()-lastRx<1000;
+  setDot('#dUsb',open);setDot('#dArd',!!alive);
+  const c=$('#conn');c.textContent=open?'ตัดการเชื่อมต่อ':'เชื่อมต่อ';c.classList.toggle('on',open);
+  if(!HAS_SERIAL&&!DEMO){
+    bar('<b>เบราว์เซอร์นี้ต่อสาย USB ไม่ได้</b> — เปิดไฟล์นี้ด้วย <b>Google Chrome</b> หรือ <b>Microsoft Edge</b> บนคอมพิวเตอร์');
+    c.style.display='none';
+  }else if(!open){
+    bar('กด <b>เชื่อมต่อ</b> แล้วเลือกพอร์ตของ Arduino (เช่น "USB-SERIAL CH340" หรือ "Arduino Uno") · '+
+        'ถ้าเปิดพอร์ตไม่ได้ ให้ปิด Serial Monitor ใน Arduino IDE ก่อน',true);
+  }else if(!alive&&Date.now()-openedAt>3500){
+    bar('<b>เปิดพอร์ตแล้ว แต่ Arduino ไม่ตอบ</b> — เลือกพอร์ตถูกไหม? · อัปโหลดโค้ด <b>Arduino_Mecanum_USB</b> แล้วหรือยัง?');
+  }else if(alive&&src===1&&tab==='drive'){
+    bar('ตอนนี้ขับด้วย<b>รีโมท FlySky</b> — จอยบนหน้าเว็บจะใช้ได้เมื่อปิดรีโมท (ปุ่มทดสอบล้อในแท็บตั้งค่าล้อใช้ได้ตลอด)',true);
+  }else bar('');
+  if(!alive){setDot('#dRc',false);setDot('#dRc2',false)}
+}
+setInterval(updateUi,300);
+
+const bars=['fl','fr','rl','rr'].map(c=>$('.wh.'+c+' i')),vals=['fl','fr','rl','rr'].map(c=>$('.val.'+c));
+let lives=[];
+function showWheels(w){
+  w.forEach((v,i)=>{
+    bars[i].style.height=Math.min(1,Math.abs(v)/255)*50+'%';
+    bars[i].classList.toggle('neg',v<0);
+    vals[i].textContent=v;
+    if(lives[i])lives[i].textContent=v;
+  });
+}
+
+// ---------- ตั้งค่าล้อ ----------
+const cards=WHEELS.map(([th,en],i)=>{
+  const c=document.createElement('div');c.className='card';
+  c.innerHTML=`<div class="ch"><b>${th}</b><small>${en}</small><span class="live">0</span></div>
+<label class="fld">ช่องมอเตอร์<select>${CH.map((t,j)=>`<option value="${j}">${t}</option>`).join('')}</select></label>
+<label class="chk"><input type="checkbox">กลับทิศ</label>
+<label class="gain"><span>ความแรง <b>100%</b></span><input type="range" min="30" max="100" step="5" value="100"></label>
+<div class="hold"><button data-d="1">▲ หน้า</button><button data-d="-1">▼ หลัง</button></div>`;
+  $('#cards').appendChild(c);
+  c.querySelector('select').onchange=e=>{cfg.m[i]=+e.target.value;sendCfg()};
+  c.querySelector('input[type=checkbox]').onchange=e=>{cfg.v[i]=e.target.checked?1:0;sendCfg()};
+  const g=c.querySelector('.gain input'),gb=c.querySelector('.gain b');
+  g.oninput=()=>{gb.textContent=g.value+'%'};
+  g.onchange=()=>{cfg.g[i]=+g.value;sendCfg()};        // ส่งตอนปล่อยแถบเลื่อน
+  bindHold(c.querySelector('.hold'),i);
+  return c;
+});
+// ปุ่มกดค้างทดสอบ: w = ล้อ (0..3) หรือ 4 = ทุกล้อ
+function bindHold(box,w){
+  box.querySelectorAll('button').forEach(b=>{
+    b.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture(e.pointerId);test={w,d:+b.dataset.d};b.classList.add('on')});
+    const end=()=>{if(test.w===w)test={w:-1,d:0};b.classList.remove('on')};
+    for(const t of['pointerup','pointercancel','lostpointercapture'])b.addEventListener(t,end);
+  });
+}
+bindHold($('#holdAll'),4);
+lives=cards.map(c=>c.querySelector('.live'));
+function sendCfg(){dirty=true;send('C '+cfg.m.join(' ')+' '+cfg.v.join(' ')+' '+cfg.g.join(' '));renderCfg()}
+function renderCfg(){
+  if(!cfg.g)cfg.g=[100,100,100,100];                    // Arduino โค้ดรุ่นเก่ายังไม่มีค่าความแรง
+  cards.forEach((c,i)=>{
+    c.querySelector('select').value=cfg.m[i];
+    c.querySelector('input[type=checkbox]').checked=!!cfg.v[i];
+    c.querySelector('.gain input').value=cfg.g[i];
+    c.querySelector('.gain b').textContent=cfg.g[i]+'%';
+  });
+  $('#dup').textContent=new Set(cfg.m).size<4?'⚠ มีล้อใช้ช่องมอเตอร์ซ้ำกัน':'';
+  $('#dirty').textContent=dirty?'ยังไม่ได้บันทึก':'';
+}
+$('#save').onclick=()=>{if(!isOpen()){toast('ยังไม่ได้เชื่อมต่อ');return}send('W')};
+
+// ---------- ทั่วไป ----------
+$$('nav button').forEach(b=>b.onclick=()=>{
+  tab=b.dataset.tab;test={w:-1,d:0};keys.clear();
+  $$('nav button').forEach(x=>x.classList.toggle('on',x===b));
+  $$('main').forEach(p=>p.classList.toggle('on',p.id===tab));
+});
+const bindRange=(id,out)=>{const r=$(id),o=$(out),f=()=>o.textContent=r.value+'%';r.oninput=f;f()};
+bindRange('#spd','#spdV');bindRange('#tp','#tpV');
+$('#stop').onclick=()=>{keys.clear();send('S')};
+
+const KEYS=['KeyW','KeyA','KeyS','KeyD','KeyQ','KeyE','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'];
+addEventListener('keydown',e=>{
+  if(e.target.tagName==='SELECT')return;
+  if(e.code==='Space'){keys.clear();send('S');e.preventDefault();return}
+  if(KEYS.includes(e.code)){keys.add(e.code);e.preventDefault()}
+});
+addEventListener('keyup',e=>keys.delete(e.code));
+addEventListener('blur',()=>keys.clear());
+addEventListener('contextmenu',e=>e.preventDefault());
+addEventListener('pagehide',()=>send('S'));
+document.addEventListener('visibilitychange',()=>{keys.clear();if(document.hidden)send('S')});
+
+let toastT;
+function toast(t){const el=$('#toast');el.textContent=t;el.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),2200)}
+
+// ---------- โหมดตัวอย่าง (?demo): จำลอง Arduino ไม่ต้องต่อหุ่น ----------
+let demoCfg={m:[0,1,2,3],v:[0,0,0,0],g:[100,100,100,100]};
+function demoHandle(msg){
+  const p=msg.split(' '),n=p.slice(1).map(Number);let o=null;
+  const gain=w=>w.map((a,i)=>Math.trunc(a*demoCfg.g[i]/100));
+  if(p[0]==='D'){const[x,y,r]=n,v=[y+x+r,y-x-r,y-x+r,y+x-r],m=Math.max(100,...v.map(Math.abs));o={w:gain(v.map(a=>Math.trunc(a*255/m))),s:2}}
+  else if(p[0]==='T')o={w:gain([0,1,2,3].map(i=>i===n[0]||n[0]===4?n[1]:0)),s:n[0]>=0?3:0};
+  else if(p[0]==='S')o={w:[0,0,0,0]};
+  else if(p[0]==='C'){demoCfg={m:n.slice(0,4),v:n.slice(4,8),g:n.length>=12?n.slice(8,12):demoCfg.g};o={cfg:demoCfg,saved:0}}
+  else if(p[0]==='W')o={cfg:demoCfg,saved:1};
+  else if(p[0]==='G')o={cfg:demoCfg,rcm:[1,2,4,3,0,1,19],mp:[2,3,1,4,5,1,6,7,0,8,9,0],saved:0};
+  if(o)setTimeout(()=>onLine(JSON.stringify(o)),5);
+  if(p[0]==='D'||p[0]==='T'){                           // จำลองรีซีฟ: ไม่มีรีโมทเปิดอยู่
+    demoRc=(demoRc||0)+1;
+    if(demoRc%2===0)setTimeout(()=>onLine(JSON.stringify({rc:[0,1,0,0,0],ch:[0,0,0,0,0,0,0,0]})),8);
+  }
+}
+let demoRc=0;
+if(DEMO)$('#mode').textContent='โหมดตัวอย่าง (ไม่ได้ต่อหุ่น)';
+updateUi();
+</script>
+</body>
+</html>
